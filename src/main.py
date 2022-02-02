@@ -42,7 +42,7 @@ def addPage(path, htmlFile, self, query, callBackFunction=None, middleWareFuncti
         if middleWareFunction:
             htmlFileIndex = eval(f'middleware.{middleWareFunction}(self, {query})')
             html = strTobyteArray(fileopen(htmlFile[htmlFileIndex], self, query))
-            print(html)
+
             return html
         
         else:
@@ -52,7 +52,7 @@ def addPage(path, htmlFile, self, query, callBackFunction=None, middleWareFuncti
             return html
 
         if callBackFunction:
-            eval(f'callbackfunctions.{callBackFunction}(self, {query}, {htmlFileIndex})')
+            eval(f'callbackfunctions.{callBackFunction}(self, {query}, {htmlFileIndex}')
 
 def addCss(path, cssFile, self, query, callBackFunction=None, middleWareFunction=None):
     actualPath = self.path.split("?")
@@ -93,15 +93,29 @@ class Server(BaseHTTPRequestHandler):
                 for i in range(pagesLength-len(page)):
                     page.append("")
             
-            css = addCss(page[0], page[2], self, query, page[3], page[4])
+            while css == []:
+                css = addCss(page[0], page[2], self, query, page[3], page[4])
         
         for page in pages.pages:
             if len(page) < pagesLength:
                 for i in range(pagesLength-len(page)):
                     page.append("")
-            html = addPage(page[0], page[1], self, query, page[3], page[4])
-        
-        print(html)
+            while html == []:
+                html = addPage(page[0], page[1], self, query, page[3], page[4])
+                cssAppendIndex = -1
+                for i in range(len(html)-1):
+                    line = html[i]
+                    if not line.find(b"<head>"):
+                        cssAppendIndex = i+1
+                
+                if not cssAppendIndex == -1:
+                    html.insert(cssAppendIndex, b"</style>")
+                    for i in range(len(css)):
+                        line = css[len(css)-1-i]
+                        html.insert(cssAppendIndex, line)
+                    html.insert(cssAppendIndex, b"<style>")
+                
+                self.wfile.writelines(html)
 
         
 if __name__ == "__main__":
