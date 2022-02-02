@@ -16,7 +16,13 @@ def strTobyteArray(array):
     return output
 
 def turntoFString(non_f_str, self, query):
-    return eval(f'f"""{non_f_str}"""')
+    if "{" in non_f_str:
+        if "}" in non_f_str:
+            return eval(f'f"""{non_f_str}"""')
+        else:
+            return non_f_str
+    else:
+        return non_f_str
 
 
 def fileopen(fileToOpen, self, query):
