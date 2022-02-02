@@ -24,7 +24,6 @@ def turntoFString(non_f_str, self, query):
     else:
         return non_f_str
 
-
 def fileopen(fileToOpen, self, query):
     with open(fileToOpen) as file:
         content = file.readlines()
@@ -42,31 +41,69 @@ def addPage(path, htmlFile, self, query, callBackFunction=None, middleWareFuncti
         
         if middleWareFunction:
             htmlFileIndex = eval(f'middleware.{middleWareFunction}(self, {query})')
-            self.wfile.writelines(strTobyteArray(fileopen(htmlFile[htmlFileIndex], self, query)))
+            html = strTobyteArray(fileopen(htmlFile[htmlFileIndex], self, query))
+            print(html)
+            return html
         
         else:
 
-            self.wfile.writelines(strTobyteArray(fileopen(htmlFile[0], self, query)))
+            html = strTobyteArray(fileopen(htmlFile[0], self, query))
+
+            return html
 
         if callBackFunction:
             eval(f'callbackfunctions.{callBackFunction}(self, {query}, {htmlFileIndex})')
 
+def addCss(path, cssFile, self, query, callBackFunction=None, middleWareFunction=None):
+    actualPath = self.path.split("?")
+
+    if actualPath[0] == path:
+        
+        if middleWareFunction:
+            cssFileIndex = eval(f'middleware.{middleWareFunction}(self, {query})')
+            css = strTobyteArray(fileopen(cssFile[cssFileIndex], self, query))
+
+            return css
+        
+        else:
+
+            css = strTobyteArray(fileopen(cssFile[0], self, query))
+
+            return css
+
+        if callBackFunction:
+            eval(f'callbackfunctions.{callBackFunction}(self, {query}, {cssFileIndex})')
+
 class Server(BaseHTTPRequestHandler):
     def do_GET(self):
+        rawQuery = urlparse(self.path).query
+        query = {}
+        pagesLength = 5
+        css = []
+        html = []
         self.send_response(200)
         self.send_header("Content-Type", "text/html")
         self.end_headers()
-        rawQuery = urlparse(self.path).query
-        query = {}
+
         if rawQuery != "":
             query = dict(qc.split("=") for qc in rawQuery.split("&"))
         
         for page in pages.pages:
-            if len(page) < 4:
-                for i in range(4-len(page)):
+            if len(page) < pagesLength:
+                for i in range(pagesLength-len(page)):
                     page.append("")
-            addPage(page[0], page[1], self, query, page[2], page[3])
+            
+            css = addCss(page[0], page[2], self, query, page[3], page[4])
+        
+        for page in pages.pages:
+            if len(page) < pagesLength:
+                for i in range(pagesLength-len(page)):
+                    page.append("")
+            html = addPage(page[0], page[1], self, query, page[3], page[4])
+        
+        print(html)
 
+        
 if __name__ == "__main__":
     webServer = HTTPServer((hostname, serverport), Server)
     print(f"Server started http://{hostname}:{serverport}")
