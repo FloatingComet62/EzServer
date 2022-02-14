@@ -4,6 +4,7 @@ import pages
 import callbackfunctions
 import middleware
 from urllib.parse import urlparse
+import static
 
 hostname = "localhost"
 serverport = 6969
@@ -24,6 +25,7 @@ def turntoFString(non_f_str, self, query):
     else:
         return non_f_str
 
+
 def fileopen(fileToOpen, self, query):
     with open(fileToOpen) as file:
         content = file.readlines()
@@ -34,90 +36,56 @@ def fileopen(fileToOpen, self, query):
     
     return output
 
-def addPage(path, htmlFile, self, query, callBackFunction=None, middleWareFunction=None):
+def addPage(page, self, query):
     actualPath = self.path.split("?")
+    path = page[0]
+    htmlFile = page[2]
+    callBackFunction = page[3] or None
+    middleWareFunction = page[4] or None
 
     if actualPath[0] == path:
+        self.send_header("Content-Type", f"text/{page[1]}")
+        self.end_headers()
         
         if middleWareFunction:
             htmlFileIndex = eval(f'middleware.{middleWareFunction}(self, {query})')
-            html = strTobyteArray(fileopen(htmlFile[htmlFileIndex], self, query))
-
-            return html
+            self.wfile.writelines(strTobyteArray(fileopen(htmlFile[htmlFileIndex], self, query)))
         
         else:
 
-            html = strTobyteArray(fileopen(htmlFile[0], self, query))
-
-            return html
+            self.wfile.writelines(strTobyteArray(fileopen(htmlFile[0], self, query)))
 
         if callBackFunction:
-            eval(f'callbackfunctions.{callBackFunction}(self, {query}, {htmlFileIndex}')
+            eval(f'callbackfunctions.{callBackFunction}(self, {query}, {htmlFileIndex})')
 
-def addCss(path, cssFile, self, query, callBackFunction=None, middleWareFunction=None):
+def addStatic(page, self, query):
     actualPath = self.path.split("?")
+    path = page[0]
+    file = page[1]
 
     if actualPath[0] == path:
-        
-        if middleWareFunction:
-            cssFileIndex = eval(f'middleware.{middleWareFunction}(self, {query})')
-            css = strTobyteArray(fileopen(cssFile[cssFileIndex], self, query))
+        self.send_header("Content-Type", f"text/{page[2]}")
+        self.end_headers()
 
-            return css
-        
-        else:
-
-            css = strTobyteArray(fileopen(cssFile[0], self, query))
-
-            return css
-
-        if callBackFunction:
-            eval(f'callbackfunctions.{callBackFunction}(self, {query}, {cssFileIndex})')
+        self.wfile.writelines(strTobyteArray(fileopen(file, self, query)))
 
 class Server(BaseHTTPRequestHandler):
     def do_GET(self):
+        self.send_response(200)
         rawQuery = urlparse(self.path).query
         query = {}
-        pagesLength = 5
-        css = []
-        html = []
-        self.send_response(200)
-        self.send_header("Content-Type", "text/html")
-        self.end_headers()
-
         if rawQuery != "":
             query = dict(qc.split("=") for qc in rawQuery.split("&"))
         
-        for page in pages.pages:
-            if len(page) < pagesLength:
-                for i in range(pagesLength-len(page)):
-                    page.append("")
-            
-            while css == []:
-                css = addCss(page[0], page[2], self, query, page[3], page[4])
+        for item in static.static:
+            addStatic(item, self, query)
         
         for page in pages.pages:
-            if len(page) < pagesLength:
-                for i in range(pagesLength-len(page)):
+            if len(page) < 5:
+                for i in range(5-len(page)):
                     page.append("")
-            while html == []:
-                html = addPage(page[0], page[1], self, query, page[3], page[4])
-                cssAppendIndex = -1
-                for i in range(len(html)-1):
-                    line = html[i]
-                    if not line.find(b"<head>"):
-                        cssAppendIndex = i+1
-                
-                if not cssAppendIndex == -1:
-                    html.insert(cssAppendIndex, b"</style>")
-                    for i in range(len(css)):
-                        line = css[len(css)-1-i]
-                        html.insert(cssAppendIndex, line)
-                    html.insert(cssAppendIndex, b"<style>")
-                
-                self.wfile.writelines(html)
+            addPage(page, self, query)
 
-        
 if __name__ == "__main__":
     webServer = HTTPServer((hostname, serverport), Server)
     print(f"Server started http://{hostname}:{serverport}")
