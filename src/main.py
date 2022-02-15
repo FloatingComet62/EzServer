@@ -27,12 +27,12 @@ def turntoFString(non_f_str, self, query):
 
 
 def fileopen(fileToOpen, self, query):
-    with open(fileToOpen) as file:
+    with open(fileToOpen , 'r', encoding='utf-8') as file:
         content = file.readlines()
 
     output = []
     for line in content:
-        output.append(turntoFString(line, self, query))
+        output.append(line)
     
     return output
 
@@ -44,7 +44,7 @@ def addPage(page, self, query):
     middleWareFunction = page[4] or None
 
     if actualPath[0] == path:
-        self.send_header("Content-Type", f"text/{page[1]}")
+        self.send_header("Content-Type", f"{page[1]}")
         self.end_headers()
         
         if middleWareFunction:
@@ -53,7 +53,7 @@ def addPage(page, self, query):
         
         else:
 
-            self.wfile.writelines(strTobyteArray(fileopen(htmlFile[0], self, query)))
+                self.wfile.writelines(strTobyteArray(fileopen(htmlFile[0], self, query)))
 
         if callBackFunction:
             eval(f'callbackfunctions.{callBackFunction}(self, {query}, {htmlFileIndex})')
@@ -64,10 +64,22 @@ def addStatic(page, self, query):
     file = page[1]
 
     if actualPath[0] == path:
-        self.send_header("Content-Type", f"text/{page[2]}")
+        self.send_header("Content-Type", f"{page[2]}")
         self.end_headers()
 
-        self.wfile.writelines(strTobyteArray(fileopen(file, self, query)))
+        if not "image" in page[2]:
+            try:
+                self.wfile.writelines(strTobyteArray(fileopen(file, self, query)))
+            except:
+                print(f"ERROR FILE: {file}")
+                print(exception)
+        else:
+            with open(file, "rb") as image:
+                try:
+                    self.wfile.writelines([bytearray(image.read())])
+                except Exception as exception:
+                    print(f"ERROR FILE: {file}")
+                    print(exception)
 
 class Server(BaseHTTPRequestHandler):
     def do_GET(self):
